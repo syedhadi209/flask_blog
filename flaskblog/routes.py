@@ -2,7 +2,7 @@ from flask import render_template, flash, redirect,url_for
 from flaskblog.models import User,Post
 from flaskblog.forms import RegistrationForm, LoginForm
 from flaskblog import app,db,bcrypt
-
+from flask_login import login_user, current_user,logout_user,login_required
 
 posts= [
     {
@@ -27,6 +27,7 @@ def home():
 
 @app.route("/register", methods=['GET','POST'])
 def register():
+    
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -42,11 +43,27 @@ def register():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        if form.email.data == "hadi@hadi.com" and form.password.data == "hadi":
-            flash("Login Successfull", category="success")
-            redirect(url_for('home'))
-
+        user = User.query.filter_by(email=form.email.data).first()
+        password_correct = bcrypt.check_password_hash(user.password,form.password.data)
+        if user and password_correct:
+            login_user(user, remember=form.remember.data)
+            flash("You ve been Logged In Successfully!!", category="success")
+            return redirect(url_for('home'))
         else:
             flash("Credentials Incorrect", category="danger")
+            return redirect(url_for('login'))
 
     return render_template("login.html", title="Login", form = form)
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+
+
+@app.route("/account")
+@login_required
+def account():
+    return render_template('account.html',title='Account')
